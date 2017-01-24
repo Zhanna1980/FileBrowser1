@@ -1,0 +1,23 @@
+{
+  "name": "filebrowser1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zhanna1980/FileBrowser1.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Zhanna1980/FileBrowser1/issues"
+  },
+  "homepage": "https://github.com/Zhanna1980/FileBrowser1#readme",
+  "dependencies": {
+    "readline-sync": "^1.4.5"
+  }
+}
