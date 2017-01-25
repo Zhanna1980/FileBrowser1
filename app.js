@@ -272,7 +272,7 @@ function deleteFileOrFolder() {
         if (!found) {
             console.log("Not found");
         }
-        printCurrentFolder(currentFolderId);
+        printFolderContent(currentFolder);
     }
 }
 /**
