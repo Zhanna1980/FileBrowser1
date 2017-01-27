@@ -379,13 +379,14 @@ function objFromSaveFormat(objectInArray) {
  * Converts flat array to fsStorage as object
  * */
 function fromSaveFormat(arr){
-    while (arr.length > 0) {
-        var objectInArray = arr.shift();
-        if (objectInArray.parent == null) {
-            fsStorage = [];
-            fsStorage.push(objFromSaveFormat(objectInArray));
-        } else {
-            findElementById(objectInArray.parent).children.push(objFromSaveFormat(objectInArray));
+    fsStorage = [];
+    fsStorage.push(objFromSaveFormat(arr[0]));// "root" always goes first in the array
+    lastAddedId = 0;
+    for (var i = 1; i < arr.length; i++) {
+        //parent is always before child in the array
+        findElementById(arr[i].parent).children.push(objFromSaveFormat(arr[i]));
+        if (arr[i].id > lastAddedId) {
+            lastAddedId = arr[i].id;
         }
     }
 }
