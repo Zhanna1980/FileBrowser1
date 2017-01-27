@@ -18,6 +18,7 @@ var shouldQuit = false;
 var currentFolderId = 0;
 var lastAddedId = 6;
 var fsStorage = [];
+var fsStorageAsArray = [];
 
 startApp();
 
@@ -34,7 +35,8 @@ function startApp() {
 function loadData() {
     try {
         var dataJson = fs.readFileSync(dataFileName, {encoding: "utf8"});
-        fsStorage = JSON.parse(dataJson);
+        fsStorageAsArray = JSON.parse(dataJson);
+        fromSaveFormat(fsStorageAsArray);
     } catch (err) {
         // fill some initial data
         fsStorage = [
@@ -130,7 +132,7 @@ function printFolderContent(folderToPrint){
  * */
 function changeCurrentFolder() {
     const folderName = readlineSync.question("Change folder to: ");
-    if (beenEnteredEmptyName(folderName)) {
+    if (isNameEmpty(folderName)) {
         return;
     }
     if (folderName == "..") {
@@ -212,7 +214,7 @@ function findElementRec(folderId, root) {
  * Checks that the element is a folder
  * */
 function isFolder (element){
-    if (element["children"] !== undefined){
+    if (element.children != undefined) {
         return true;
     }
     else{
@@ -225,7 +227,7 @@ function isFolder (element){
  */
 function createFileOrFolder() {
     const newFileOrFolderName = readlineSync.question("Please type file/folder name: ");
-    if (beenEnteredEmptyName(newFileOrFolderName)) {
+    if (isNameEmpty(newFileOrFolderName)) {
         return;
     }
     if (findChildByName(currentFolderId, newFileOrFolderName) != null) {
@@ -250,7 +252,7 @@ function createFileOrFolder() {
  * */
 function deleteFileOrFolder() {
     const nameToBeDeleted = readlineSync.question("Please type file/folder name to be deleted: ");
-    if (beenEnteredEmptyName(nameToBeDeleted)) {
+    if (isNameEmpty(nameToBeDeleted)) {
         return;
     }
     if (nameToBeDeleted == "root") {
@@ -280,7 +282,7 @@ function deleteFileOrFolder() {
  */
 function openFile() {
     const fileName = readlineSync.question("Which file to open? ");
-    if (beenEnteredEmptyName(fileName)) {
+    if (isNameEmpty(fileName)) {
         return;
     }
     const file = findChildByName(currentFolderId, fileName);
@@ -303,7 +305,8 @@ function quitProgram() {
     if (readlineSync.keyInYN("Do you want to quit?")) {
         // 'Y' key was pressed.
         try {
-            var data = JSON.stringify(fsStorage);
+            toSaveFormat(fsStorage[0]);
+            var data = JSON.stringify(fsStorageAsArray);
             fs.writeFileSync(dataFileName, data, {encoding: "utf8"});
         } catch(err) {
             console.log("Error occurred while saving the data", err.code);
@@ -319,7 +322,7 @@ function quitProgram() {
  * Checks the length of the string, representing file/folder name and prints in the console if it is empty.
  * @return true if the string empty or false otherwise.
  * */
-function beenEnteredEmptyName(name) {
+function isNameEmpty(name) {
     if (name.length === 0) {
         console.log("You didn't enter name.");
         return true;
@@ -327,6 +330,65 @@ function beenEnteredEmptyName(name) {
         return false;
     }
 }
+
+/**
+ * Converts fsStorage to flat array.
+ * */
+function toSaveFormat(root){
+    if (root.id === 0){
+        fsStorageAsArray = [];
+        fsStorageAsArray.push(objToSaveFormat(root, null));
+    }
+    if (isFolder(root)) {
+        for (var i = 0; i < root.children.length; i++) {
+            fsStorageAsArray.push(objToSaveFormat(root.children[i], root));
+            toSaveFormat(root.children[i]);
+        }
+    }
+}
+
+/**
+ * Converts the element to object for array
+ * */
+function objToSaveFormat(obj, parent){
+    const parentId = parent === null ? null : parent.id;
+    const type = isFolder(obj) ? "folder" : "file";
+    var element = {id: obj.id, parent: parentId, name: obj.name, type: type};
+    if (obj.content != undefined){
+        element.content = obj.content;
+    }
+    return element;
+}
+
+
+/**
+ * Converts the object from flat array to object which is suitable for fsStorage as object.
+ * */
+function objFromSaveFormat(objectInArray) {
+   var objectInTree = {id: objectInArray.id, name: objectInArray.name};
+   if (objectInArray.type == "folder") {
+       objectInTree.children = [];
+   } else if (objectInArray.content != undefined) {
+       objectInTree.content = objectInArray.content;
+   }
+   return objectInTree;
+}
+
+/**
+ * Converts flat array to fsStorage as object
+ * */
+function fromSaveFormat(arr){
+    while (arr.length > 0) {
+        var objectInArray = arr.shift();
+        if (objectInArray.parent == null) {
+            fsStorage = [];
+            fsStorage.push(objFromSaveFormat(objectInArray));
+        } else {
+            findElementById(objectInArray.parent).children.push(objFromSaveFormat(objectInArray));
+        }
+    }
+}
+
 
 
 
