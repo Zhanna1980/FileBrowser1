@@ -18,14 +18,13 @@ var shouldQuit = false;
 var currentFolderId = 0;
 var lastAddedId = 6;
 var fsStorage = [];
-var fsStorageAsArray = [];
 
 startApp();
 
 function startApp() {
     loadData();
     printCurrentFolder(currentFolderId);
-    //app's loop:
+    // app's loop:
     while (!shouldQuit) {
         const selectedMenuOption = printMenu();
         onMenuOptionSelected(selectedMenuOption);
@@ -34,8 +33,8 @@ function startApp() {
 
 function loadData() {
     try {
-        var dataJson = fs.readFileSync(dataFileName, {encoding: "utf8"});
-        fsStorageAsArray = JSON.parse(dataJson);
+        const dataJson = fs.readFileSync(dataFileName, {encoding: "utf8"});
+        const fsStorageAsArray = JSON.parse(dataJson);
         fromSaveFormat(fsStorageAsArray);
     } catch (err) {
         // fill some initial data
@@ -305,7 +304,7 @@ function quitProgram() {
     if (readlineSync.keyInYN("Do you want to quit?")) {
         // 'Y' key was pressed.
         try {
-            toSaveFormat(fsStorage[0]);
+            const fsStorageAsArray = toSaveFormat(fsStorage[0], []);
             var data = JSON.stringify(fsStorageAsArray);
             fs.writeFileSync(dataFileName, data, {encoding: "utf8"});
         } catch(err) {
@@ -334,17 +333,19 @@ function isNameEmpty(name) {
 /**
  * Converts fsStorage to flat array.
  * */
-function toSaveFormat(root){
+function toSaveFormat(root, saveArray){
     if (root.id === 0){
-        fsStorageAsArray = [];
-        fsStorageAsArray.push(objToSaveFormat(root, null));
+        saveArray = [];
+        saveArray.push(objToSaveFormat(root, null));
     }
     if (isFolder(root)) {
         for (var i = 0; i < root.children.length; i++) {
-            fsStorageAsArray.push(objToSaveFormat(root.children[i], root));
-            toSaveFormat(root.children[i]);
+            saveArray.push(objToSaveFormat(root.children[i], root));
+             arr = toSaveFormat(root.children[i], saveArray);
+             saveArray.concat(arr);
         }
     }
+    return saveArray;
 }
 
 /**
