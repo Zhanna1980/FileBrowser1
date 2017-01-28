@@ -23,7 +23,7 @@ startApp();
 
 function startApp() {
     loadData();
-    printCurrentFolder(currentFolderId);
+    printFolderContentById(currentFolderId);
     // app's loop:
     while (!shouldQuit) {
         const selectedMenuOption = printMenu();
@@ -31,6 +31,9 @@ function startApp() {
     }
 }
 
+/**
+ * Loads saved data from file or if there is no such file assigns default value for fsStorage
+ * */
 function loadData() {
     try {
         const dataJson = fs.readFileSync(dataFileName, {encoding: "utf8"});
@@ -55,16 +58,22 @@ function loadData() {
     }
 }
 
+/**
+ * Prints user menu
+ * */
 function printMenu() {
     const selectedMenuOption = readlineSync.keyInSelect(menu, "Please make your choice",{"cancel" : false});
     return selectedMenuOption;
 }
 
+/**
+ * Handles user's selection in menu
+ * */
 function onMenuOptionSelected(selectedMenuOption) {
     switch (selectedMenuOption) {
         //Print current folder
         case 0:
-            printCurrentFolder(currentFolderId);
+            printFolderContentById(currentFolderId);
             break;
         //Change current folder
         case 1:
@@ -92,28 +101,33 @@ function onMenuOptionSelected(selectedMenuOption) {
 }
 /**
  * Finds current folder by id and prints it
+ * @param folderId - the id of the folder
  * */
-function printCurrentFolder(currentFolderId){
-    const folderToPrint = findElementById(currentFolderId);
+function printFolderContentById(folderId){
+    const folderToPrint = findElementById(folderId);
     printFolderContent(folderToPrint);
 }
 /**
+ * Finds element by its id
+ * @param elementId - the id of the element
  * @return element object with given id
  * */
 function findElementById(elementId) {
-    return findElementRec(elementId, fsStorage[0]).element;
+    return findElementRecursive(elementId, fsStorage[0], null).element;
 }
 
 /**
+ * Finds parent element by id of the child element
  * @param elementId - the id of the child element.
  * @return parent object.
  * */
 function findParentByElementId(elementId) {
-    return findElementRec(elementId, fsStorage[0]).parent;
+    return findElementRecursive(elementId, fsStorage[0], null).parent;
 }
 
 /**
  * Prints the content of the folder after sorting by type(first folders then files) and alphabetically.
+ * @param folderToPrint - object (folder) in the fsStorage which content will be printed
  * */
 function printFolderContent(folderToPrint){
     console.log(folderToPrint.name);
@@ -155,6 +169,7 @@ function goUp() {
 
 /**
  * Changes current folder to a specified folder one level down.
+ * @param folderName - string, the name of the folder one level down
  * */
 function goDown(folderName) {
     const folderToGo = findChildByName(currentFolderId, folderName);
@@ -172,12 +187,14 @@ function goDown(folderName) {
 
 /**
  * Searches for an element with given name among the children of the folder with given id
+ * @param folderId - id of the folder where the function searches for the element
+ * @param childName - string, the name of the element that is searched for
  * @return child element with matching name
  * */
 function findChildByName(folderId, childName){
     const currentFolder = findElementById(folderId);
     for (var i = 0; i < currentFolder.children.length; i++){
-        if (currentFolder.children[i].name == childName){
+        if (currentFolder.children[i].name === childName){
             return currentFolder.children[i];
         }
     }
@@ -186,31 +203,30 @@ function findChildByName(folderId, childName){
 
 /**
  * Searches recursively for an element in fsStorage
- * @param folderId - integer which is stored in element.id
- * @param root - object from which the function starts search
+ * @param id - integer which is stored in element.id
+ * @param element - object from which the function starts search
+ * @param parent - parent object of element
  * @return object with element with given id and with parent element.
  * */
-function findElementRec(folderId, root) {
-    if(root.id === folderId){
-        return {element: root, parent: null};
+function findElementRecursive(id, element, parent) {
+    if(element.id === id) {
+        return {element: element, parent: parent};
     }
-    var result = {element: null, parent: null};
-    if (isFolder(root)) {
-        for (var i = 0; i < root.children.length; i++) {
-            if (root.children[i].id === folderId){
-                return {element: root.children[i], parent: root};
-            }
-            result = findElementRec(folderId, root.children[i]);
-            if (result.element !== null && result.parent !== null) {
+    if (isFolder(element)) {
+        for (var i = 0; i < element.children.length; i++) {
+            var result = findElementRecursive(id, element.children[i], element);
+            if (result.element !== null) {
                 return result;
             }
         }
     }
-    return result;
+    return {element: null, parent: null};
 }
 
 /**
  * Checks that the element is a folder
+ * @param element - object in fsStorage
+ * @return true if the element is a folder and false if it is a file
  * */
 function isFolder (element){
     if (element.children != undefined) {
@@ -304,14 +320,13 @@ function quitProgram() {
     if (readlineSync.keyInYN("Do you want to quit?")) {
         // 'Y' key was pressed.
         try {
-            const fsStorageAsArray = toSaveFormat(fsStorage[0], []);
+            const fsStorageAsArray = toSaveFormat(fsStorage[0], null);
             var data = JSON.stringify(fsStorageAsArray);
             fs.writeFileSync(dataFileName, data, {encoding: "utf8"});
         } catch(err) {
             console.log("Error occurred while saving the data", err.code);
         }
         shouldQuit = true;
-        process.exit(0);
     } else {
         return;
     }
@@ -319,6 +334,7 @@ function quitProgram() {
 
 /**
  * Checks the length of the string, representing file/folder name and prints in the console if it is empty.
+ * @param name - entered by the user string
  * @return true if the string empty or false otherwise.
  * */
 function isNameEmpty(name) {
@@ -332,17 +348,16 @@ function isNameEmpty(name) {
 
 /**
  * Converts fsStorage to flat array.
+ * @param element - element of fsStorage. First time the function is called with root element (fsStorage[0])
+ * @param parent - parent element. First time the function is called with null
+ * @return saveArray - objects of fsStorage in flat array
  * */
-function toSaveFormat(root, saveArray){
-    if (root.id === 0){
-        saveArray = [];
-        saveArray.push(objToSaveFormat(root, null));
-    }
-    if (isFolder(root)) {
-        for (var i = 0; i < root.children.length; i++) {
-            saveArray.push(objToSaveFormat(root.children[i], root));
-             arr = toSaveFormat(root.children[i], saveArray);
-             saveArray.concat(arr);
+function toSaveFormat(element, parent){
+    var saveArray = [objToSaveFormat(element, parent)];
+    if (isFolder(element)) {
+        for (var i = 0; i < element.children.length; i++) {
+             var arr = toSaveFormat(element.children[i], element);
+             saveArray = saveArray.concat(arr);
         }
     }
     return saveArray;
@@ -350,6 +365,9 @@ function toSaveFormat(root, saveArray){
 
 /**
  * Converts the element to object for array
+ * @param obj - object at the runtime format
+ * @param parent - parent element of the given object
+ * @return object at the save format
  * */
 function objToSaveFormat(obj, parent){
     const parentId = parent === null ? null : parent.id;
@@ -364,6 +382,8 @@ function objToSaveFormat(obj, parent){
 
 /**
  * Converts the object from flat array to object which is suitable for fsStorage as object.
+ * @param objectInArray - object from saved array
+ * @return object at the runtime format
  * */
 function objFromSaveFormat(objectInArray) {
    var objectInTree = {id: objectInArray.id, name: objectInArray.name};
@@ -376,7 +396,8 @@ function objFromSaveFormat(objectInArray) {
 }
 
 /**
- * Converts flat array to fsStorage as object
+ * Converts flat array to fsStorage object
+ * @param arr - fsStorage as array (saved format)
  * */
 function fromSaveFormat(arr){
     fsStorage = [];
